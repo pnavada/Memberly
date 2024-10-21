@@ -5,7 +5,7 @@ services:
       - mynetwork
     hostname: "one"
     container_name: "one"
-    command: -h hostsfile.txt -t
+    command: -h hostsfile.txt
 
   two:
     image: prj3
@@ -36,8 +36,8 @@ services:
     networks:
       - mynetwork
     hostname: "five"
-    command: -h hostsfile.txt -d 8
     container_name: "five"
+    command: -h hostsfile.txt -d 8
 
 networks:
   # The presence of these objects is sufficient to define them

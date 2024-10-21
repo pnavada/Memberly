@@ -29,6 +29,7 @@ var (
 	udpEgress    = NewUDPConnectionPool(udpPort, Outgoing)
 	leader       = &SafeValue[string]{}
 	members      = &SafeList[int]{}
+	aliveMembers = &SafeList[int]{}
 	pendingOps   = &SafeList[RequestMessage]{}
 	viewId       = SafeValue[int]{}
 	requestId    = SafeValue[int]{}
@@ -547,7 +548,7 @@ func MonitorHeartBeats(beats *sync.Map, members *SafeList[int], t float64, me st
 					}
 					pendingOps.Add(requestMessage)
 					encodedData := EncodeIntegersToByteArray(int(REQ), requestMessage.RequestId, requestMessage.ViewId, int(requestMessage.Operation), requestMessage.PeerId)
-					aliveMembers := &SafeList[int]{list: members.GetAll()}
+					aliveMembers.Replace(members.GetAll())
 					aliveMembers.RemoveByValue(member)
 					go SendMessageToMembers(aliveMembers, encodedData, TCP, peerIdToName, writeChannel, me)
 					if len(aliveMembers.GetAll()) == 1 {
@@ -556,14 +557,26 @@ func MonitorHeartBeats(beats *sync.Map, members *SafeList[int], t float64, me st
 						fmt.Printf("{peer_id:%d, view_id: %d, leader: %d, memb_list: [<%s>]}\n", peerNameToId[me], viewId.Get(), peerNameToId[leader.Get()], strings.Trim(strings.Join(strings.Fields(fmt.Sprint(members.GetAll())), ","), "[]"))
 					}
 				} else if memberName == leader.Get() {
-					members.RemoveByValue(peerNameToId[leader.Get()])
+
+					// members.RemoveByValue(peerNameToId[leader.Get()])
 					members.Sort(func(a, b int) bool { return a < b })
-					if newLeaderId, ok := members.Get(0); ok {
+					if newLeaderId, ok := members.Get(1); ok {
 						leader.Set(peerIdToName[newLeaderId])
 					}
 					if leader.Get() == me {
+						aliveMembers.Replace(members.GetAll())
+						aliveMembers.RemoveByValue(member)
+						requestId.Set(requestId.Get() + 1)
 						encodedData := EncodeIntegersToByteArray(int(NEWLEADER), requestId.Get(), viewId.Get(), int(PENDING))
-						go SendMessageToMembers(members, encodedData, TCP, peerIdToName, writeChannel, me)
+						go SendMessageToMembers(aliveMembers, encodedData, TCP, peerIdToName, writeChannel, me)
+						requestId.Set(requestId.Get() + 1)
+						requestMessage := RequestMessage{
+							ViewId:    viewId.Get(),
+							RequestId: requestId.Get(),
+							Operation: DEL,
+							PeerId:    peerNameToId[memberName],
+						}
+						pendingOps.Add(requestMessage)
 					}
 				}
 			}
@@ -730,10 +743,11 @@ func main() {
 			}
 			target := &SafeList[int]{list: members.GetAll()}
 			target.RemoveByValue(peerNameToId[peers[1]])
+			target.RemoveByValue(peerNameToId[peers[4]])
 			sent.Set(0)
 			go func() {
 				SendMessageToMembers(target, EncodeIntegersToByteArray(int(REQ), requestMessage.RequestId, requestMessage.ViewId, int(requestMessage.Operation), requestMessage.PeerId), TCP, peerIdToName, writeChannel, me)
-				for sent.Get() < len(peers)-2 {
+				for sent.Get() < len(peers)-3 {
 					continue
 				}
 				os.Exit(1)
@@ -793,7 +807,7 @@ func main() {
 
 					op, ok := pendingOps.GetByViewAndRequestId(data[2], data[1])
 					if !ok {
-						fmt.Println("Error: Operation not found in pendingOps")
+						fmt.Println("Error:Hello Operation not found in pendingOps")
 						break
 					}
 
@@ -825,6 +839,7 @@ func main() {
 				}
 			case NEWLEADER:
 				// Send pending operations to new leader
+				leader.Set(sender)
 				var pendingResponse []int
 				pendingResponse = append(pendingResponse, int(PENDINGRESPONSE))
 				if len(pendingOps.GetAll()) == 0 {
@@ -868,6 +883,7 @@ func main() {
 					PeerId:    data[4],
 				}
 				_, ok := pendingOps.GetByViewAndRequestId(requestMessage.ViewId, requestMessage.RequestId)
+
 				if !ok && requestMessage.Operation != NOTHING {
 					pendingOps.Add(requestMessage)
 				}
@@ -878,17 +894,18 @@ func main() {
 				} else {
 					ackCount.Store(key, 1)
 				}
-				op, ok := pendingOps.GetByViewAndRequestId(data[2], data[1])
-				if !ok {
-					fmt.Println("Error: Operation not found in pendingOps")
+
+				if requestMessage.Operation == NOTHING {
 					break
 				}
 
-				rcount := len(members.GetAll()) - 1
-
-				if op.Operation == DEL {
-					rcount--
+				op, ok := pendingOps.GetByViewAndRequestId(data[2], data[1])
+				if !ok {
+					fmt.Println("Error:World Operation not found in pendingOps")
+					break
 				}
+
+				rcount := len(aliveMembers.GetAll()) - 1
 
 				if count, ok := ackCount.Load(key); ok && count.(int) == rcount {
 					// Send NewView message
@@ -897,10 +914,22 @@ func main() {
 						members.Add(op.PeerId)
 					} else if op.Operation == DEL {
 						members.RemoveByValue(op.PeerId)
+						aliveMembers.RemoveByValue(op.PeerId)
 					}
 					encodedData := EncodeIntegersToByteArray(append([]int{int(NEWVIEW), viewId.Get()}, members.GetAll()...)...)
-					go SendMessageToMembers(members, encodedData, TCP, peerIdToName, writeChannel, me)
+					go SendMessageToMembers(aliveMembers, encodedData, TCP, peerIdToName, writeChannel, me)
 					pendingOps.RemoveByViewAndRequestId(data[2], data[1])
+
+					for _, op := range pendingOps.GetAll() {
+						encodedData := EncodeIntegersToByteArray(int(REQ), op.RequestId, op.ViewId, int(op.Operation), op.PeerId)
+						go func() {
+							if op.Operation == DEL {
+								aliveMembers.RemoveByValue(op.PeerId)
+							}
+							SendMessageToMembers(aliveMembers, encodedData, TCP, peerIdToName, writeChannel, me)
+						}()
+					}
+
 				}
 
 			}
