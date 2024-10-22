@@ -4,7 +4,10 @@ RUN apt-get update && apt install -y golang
 
 WORKDIR /home/ubuntu
 
-COPY peer.go .
-COPY hostsfile.txt .
+COPY peer main.go hostsfile.txt /home/ubuntu/
 
-ENTRYPOINT [ "go", "run", "peer.go" ]
+ENV GOPATH=/go
+
+RUN go mod init peer && go mod tidy
+
+ENTRYPOINT [ "go", "run", "main.go" ]
