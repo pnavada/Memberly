@@ -82,7 +82,7 @@ The program accepts the following command-line flags:
 1. **Membership Management**
    - View-based consistency
    - Quorum-based acknowledgments
-   - Dynamic member addition/removal
+   - Member addition/removal
 
 2. **Failure Detection**
    - Heartbeat-based monitoring
