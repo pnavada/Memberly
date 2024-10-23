@@ -97,3 +97,7 @@ func RemoveSelf(peers []string, self string) ([]string, error) {
 	}
 	return peersWithoutSelf, nil
 }
+
+func PrintToStderr(message string) {
+	fmt.Fprintln(os.Stderr, message)
+}

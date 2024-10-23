@@ -267,11 +267,11 @@ func (mh *MessageHandler) sendMessage(outboundMessage types.OutboundMessage) {
 }
 
 func (mh *MessageHandler) logMembershipChange() {
-	fmt.Printf("{peer_id:%d, view_id: %d, leader: %d, memb_list: [<%s>]}\n",
+	utils.PrintToStderr(fmt.Sprintf("{peer_id:%d, view_id: %d, leader: %d, memb_list: [<%s>]}",
 		mh.peer.PeerNameToId[mh.peer.Me],
 		mh.peer.ViewId.Get(),
 		mh.peer.PeerNameToId[mh.peer.Leader.Get()],
-		strings.Trim(strings.Join(strings.Fields(fmt.Sprint(mh.peer.Members.GetAll())), ","), "[]"))
+		strings.Trim(strings.Join(strings.Fields(fmt.Sprint(mh.peer.Members.GetAll())), ","), "[]")))
 }
 
 func (mh *MessageHandler) broadcastNewView() {

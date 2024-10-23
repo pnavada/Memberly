@@ -434,18 +434,18 @@ func (p *Peer) sendAndCrash(target *datastructures.SafeList[int], requestMessage
 	}
 
 	// Log crash message and exit
-	fmt.Printf("{peer_id:%d, view_id: %d, leader: %d, message:\"crashing\"}\n",
-		p.PeerNameToId[p.Me], p.ViewId.Get(), p.PeerNameToId[p.Leader.Get()])
+	utils.PrintToStderr(fmt.Sprintf("{peer_id:%d, view_id: %d, leader: %d, message:\"crashing\"}",
+		p.PeerNameToId[p.Me], p.ViewId.Get(), p.PeerNameToId[p.Leader.Get()]))
 	os.Exit(1)
 }
 
 // Utility functions
 func (p *Peer) logMembershipChange() {
-	fmt.Printf("{peer_id:%d, view_id: %d, leader: %d, memb_list: [<%s>]}\n",
+	utils.PrintToStderr(fmt.Sprintf("{peer_id:%d, view_id: %d, leader: %d, memb_list: [<%s>]}",
 		p.PeerNameToId[p.Me],
 		p.ViewId.Get(),
 		p.PeerNameToId[p.Leader.Get()],
-		strings.Trim(strings.Join(strings.Fields(fmt.Sprint(p.Members.GetAll())), ","), "[]"))
+		strings.Trim(strings.Join(strings.Fields(fmt.Sprint(p.Members.GetAll())), ","), "[]")))
 }
 
 func (p *Peer) logPeerFailure(peerId int, isLeader bool) {
@@ -453,10 +453,10 @@ func (p *Peer) logPeerFailure(peerId int, isLeader bool) {
 	if isLeader {
 		leaderStr = " (leader)"
 	}
-	fmt.Printf("{peer_id:%d, view_id: %d, leader: %d, message:\"peer %d%s unreachable\"}\n",
+	utils.PrintToStderr(fmt.Sprintf("{peer_id:%d, view_id: %d, leader: %d, message:\"peer %d%s unreachable\"}",
 		p.PeerNameToId[p.Me],
 		p.ViewId.Get(),
 		p.PeerNameToId[p.Leader.Get()],
 		peerId,
-		leaderStr)
+		leaderStr))
 }
