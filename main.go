@@ -12,7 +12,10 @@ import (
 )
 
 func main() {
+
 	cfg := config.ParseFlags()
+
+	time.Sleep(time.Duration(cfg.InitialDelay) * time.Second)
 
 	me, err := os.Hostname()
 	if err != nil {
@@ -36,8 +39,6 @@ func main() {
 	}
 
 	p := network.NewPeer(me, leaderName, peerNameToId, peerIdToName, peers)
-
-	time.Sleep(time.Duration(cfg.InitialDelay) * time.Second)
 
 	if cfg.CrashDelay > 0 {
 		go func() {

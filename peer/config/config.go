@@ -17,7 +17,7 @@ func ParseFlags() *Config {
 	flag.StringVar(&cfg.HostsFile, "h", "", "Path to the hosts file")
 	flag.IntVar(&cfg.InitialDelay, "d", 0, "Initial delay in seconds (default: 0)")
 	flag.IntVar(&cfg.CrashDelay, "c", 0, "Crash delay in seconds")
-	flag.BoolVar(&cfg.Crash, "t", false, "Crash leader")
+	flag.BoolVar(&cfg.Crash, "t", false, "Crash")
 
 	flag.Parse()
 
